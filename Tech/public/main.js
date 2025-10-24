@@ -9,6 +9,15 @@ class App {
         this.lastTime = performance.now();
         this.currentPrivacyLevel = 'high';
         this.selectedPresetFilename = null; // Для хранения имени выбранного фона
+        // Добавленные пресеты цветов
+        this.COMPANY_PRESETS = {
+            "Сбер": { "primary_color": [0, 166, 81], "secondary_color": [0, 102, 51] },
+            "Тбанк": { "primary_color": [255, 215, 0], "secondary_color": [0, 0, 0] },
+            "Т1": { "primary_color": [0, 90, 255], "secondary_color": [255, 255, 255] },
+            "Яндекс": { "primary_color": [255, 0, 0], "secondary_color": [255, 255, 255] },
+            "Роснефть": { "primary_color": [255, 204, 0], "secondary_color": [0, 0, 0] },
+            "Газпром": { "primary_color": [0, 92, 184], "secondary_color": [255, 255, 255] }
+        };
         this.init();
     }
 
@@ -28,10 +37,27 @@ class App {
         this.refreshPrivacyOverlay();
         ui.renderLayersPanel();
         await this.loadPresetBackgrounds();
-        // Устанавливаем начальное состояние чекбокса логотипа, если оно нужно
         ui.elements.showLogoCheckbox.checked = false; 
+        ui.renderCompanyPresets(this.COMPANY_PRESETS); // Вызываем рендеринг пресетов
     }
 
+    // Хелпер для конвертации RGB в HEX
+    rgbToHex(rgb) {
+        const h = v => v.toString(16).padStart(2, '0');
+        return '#' + h(rgb[0]) + h(rgb[1]) + h(rgb[2]);
+    }
+
+    applyCompanyPreset(companyName) {
+        const preset = this.COMPANY_PRESETS[companyName];
+        if (preset) {
+            const primaryHex = this.rgbToHex(preset.primary_color);
+            const secondaryHex = this.rgbToHex(preset.secondary_color);
+            
+            ui.setGeneratorColors(primaryHex, secondaryHex);
+            this.regenerateBackground(true); // Обновляем превью И сохраняем на сервер
+        }
+    }
+    
     async loadEmployeeData() {
         try {
             const response = await fetch('employee.json');
@@ -72,7 +98,6 @@ class App {
         this.selectOverlayForEditing(null);
         if (ui.elements.showPrivacyCheckbox.checked) {
             let text = '';
-            // Fix: Added missing properties to text generation based on the data structure in employee.json
             switch (this.currentPrivacyLevel) {
                 case 'high': text = `${this.employeeData.full_name}\n${this.employeeData.position}\n${this.employeeData.company}\n${this.employeeData.department}\n${this.employeeData.office_location}\n${this.employeeData.contact.email}\n${this.employeeData.contact.telegram}`; break;
                 case 'medium': text = `${this.employeeData.full_name}\n${this.employeeData.position}\n${this.employeeData.company}\n${this.employeeData.department}\n${this.employeeData.office_location}`; break;
@@ -80,7 +105,6 @@ class App {
             }
             ui.updatePrivacyPreview(text);
             if (text) {
-                // Initial coordinates for the privacy badge
                 const initialX = 20, initialY = 20; 
                 const style = { 
                     text, 
@@ -94,7 +118,6 @@ class App {
                     backgroundOpacity: 0.75 
                 };
                 const id = videoProcessor.addOverlay({ type: 'text', group: 'privacy', data: style });
-                // We select the privacy overlay for editing controls to be updated, but usually it shouldn't be draggable
                 this.selectOverlayForEditing(id); 
             }
         } else { ui.updatePrivacyPreview(''); }
@@ -133,7 +156,6 @@ class App {
     addImageOverlay(src, group = 'custom') {
         if (!src) return;
 
-        // Удаляем предыдущий логотип, если добавляется новый логотип
         if (group === 'logo') {
             videoProcessor.removeOverlaysByGroup('logo');
         }
@@ -142,9 +164,13 @@ class App {
         imageElement.crossOrigin = "anonymous";
         imageElement.src = src;
         imageElement.onload = () => {
-            const defaultWidth = 200;
+            const defaultWidth = (group === 'logo') ? 100 : 200; // Меньший размер для лого
             const aspectRatio = imageElement.naturalWidth / imageElement.naturalHeight;
-            const data = { src, imageElement, x: 200, y: 200, width: defaultWidth, height: defaultWidth / aspectRatio, aspectRatio };
+            
+            const initialX = (group === 'logo') ? 1280 - defaultWidth - 20 : 200;
+            const initialY = (group === 'logo') ? 720 - (defaultWidth / aspectRatio) - 20 : 200;
+
+            const data = { src, imageElement, x: initialX, y: initialY, width: defaultWidth, height: defaultWidth / aspectRatio, aspectRatio };
             const id = videoProcessor.addOverlay({ type: 'image', group, data });
             this.selectOverlayForEditing(id);
             ui.renderLayersPanel();
@@ -152,35 +178,11 @@ class App {
         imageElement.onerror = () => { alert('Не удалось загрузить изображение: ' + src); };
     }
     
-    // Новая функция для переключения отображения логотипа
     toggleLogoOverlay(visible) {
         if (visible) {
             const existingLogo = videoProcessor.state.overlays.find(o => o.group === 'logo');
             if (!existingLogo && this.employeeData?.branding.logo_url) {
-                // Используем небольшие координаты, чтобы логотип не мешал
-                const initialX = 1280 - 200; 
-                const initialY = 720 - 200; 
-
-                const imageElement = new Image();
-                imageElement.crossOrigin = "anonymous";
-                imageElement.src = this.employeeData.branding.logo_url;
-                
-                imageElement.onload = () => {
-                    const defaultWidth = 100; // Меньший размер для логотипа
-                    const aspectRatio = imageElement.naturalWidth / imageElement.naturalHeight;
-                    const data = { 
-                        src: this.employeeData.branding.logo_url, 
-                        imageElement, 
-                        x: initialX - defaultWidth, 
-                        y: initialY - (defaultWidth / aspectRatio), 
-                        width: defaultWidth, 
-                        height: defaultWidth / aspectRatio, 
-                        aspectRatio 
-                    };
-                    const id = videoProcessor.addOverlay({ type: 'image', group: 'logo', data });
-                    this.selectOverlayForEditing(id);
-                    ui.renderLayersPanel();
-                };
+                this.addImageOverlay(this.employeeData.branding.logo_url, 'logo');
             }
         } else {
             videoProcessor.removeOverlaysByGroup('logo');
@@ -239,13 +241,11 @@ class App {
 
     applyGeneratedBackground() { videoProcessor.setBackground('image', `wallpaper.png?t=${Date.now()}`); }
 
-    // Новая функция для выбора фона из галереи (без применения)
     selectPresetBackground(filename) {
         this.selectedPresetFilename = filename;
-        ui.updateSelectedPreset(filename); // Сообщаем UI, чтобы он обновил выделение
+        ui.updateSelectedPreset(filename); 
     }
     
-    // Функция для применения ВЫБРАННОГО фона
     async applyPresetBackground() {
         if (!this.selectedPresetFilename) {
             alert('Пожалуйста, сначала выберите фон из галереи.');
@@ -261,7 +261,6 @@ class App {
 
             if (response.ok) {
                 console.log(`Successfully set ${this.selectedPresetFilename} as wallpaper.`);
-                // Применяем к видеопотоку только что перезаписанный wallpaper.png
                 this.applyGeneratedBackground();
             } else {
                 const error = await response.json();

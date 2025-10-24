@@ -37,7 +37,7 @@ const ui = {
         qrBtnDefault: document.getElementById('qrBtnDefault'),
         qrBtnCustom: document.getElementById('qrBtnCustom'),
         imageInput: document.getElementById('image'),
-        showLogoCheckbox: document.getElementById('show-logo'), // Добавлен чекбокс
+        showLogoCheckbox: document.getElementById('show-logo'), 
         primaryColor: document.getElementById('primary'),
         secondaryColor: document.getElementById('secondary'),
         cellInput: document.getElementById('cell'),
@@ -47,6 +47,7 @@ const ui = {
         applyBgBtn: document.getElementById('applyBg'),
         presetBackgroundsGallery: document.getElementById('preset-backgrounds-gallery'),
         applyPresetBgBtn: document.getElementById('applyPresetBgBtn'),
+        companyPresetSelect: document.getElementById('company-preset-select'), // НОВЫЙ ЭЛЕМЕНТ
     },
     interactionCtx: null,
     isDragging: false,
@@ -55,10 +56,12 @@ const ui = {
     
     init(app) {
         this.app = app;
-        this.interactionCtx = this.elements.interactionCanvas.getContext('2d');
+        if (this.elements.interactionCanvas) {
+            this.interactionCtx = this.elements.interactionCanvas.getContext('2d');
+        }
         this.addEventListeners();
         const resizeInterval = setInterval(() => {
-            if (this.app.localVideo.videoWidth > 0) {
+            if (this.app.localVideo && this.app.localVideo.videoWidth > 0) {
                 this.resizeInteractionCanvas();
                 clearInterval(resizeInterval);
             }
@@ -69,7 +72,7 @@ const ui = {
     resizeInteractionCanvas() {
         const video = this.app.localVideo;
         const canvas = this.elements.interactionCanvas;
-        if (!video.videoWidth || !video.videoHeight) return;
+        if (!video || !canvas || !video.videoWidth || !video.videoHeight) return;
         const videoRect = video.getBoundingClientRect();
         const containerRect = canvas.parentElement.getBoundingClientRect();
         canvas.width = videoRect.width;
@@ -80,106 +83,187 @@ const ui = {
 
 
     addEventListeners() {
-        this.elements.layersPanel.addEventListener('click', (e) => { 
-            if (e.target.classList.contains('delete-layer-btn')) {
-                 this.app.deleteOverlay(parseFloat(e.target.dataset.id));
-            } else if (e.target.closest('.layer-item')) {
-                 const id = parseFloat(e.target.closest('.layer-item').dataset.id);
-                 this.app.selectOverlayForEditing(id);
-            }
-        });
+        if (this.elements.layersPanel) {
+            this.elements.layersPanel.addEventListener('click', (e) => { 
+                if (e.target.classList.contains('delete-layer-btn')) {
+                    this.app.deleteOverlay(parseFloat(e.target.dataset.id));
+                } else if (e.target.closest('.layer-item')) {
+                    const id = parseFloat(e.target.closest('.layer-item').dataset.id);
+                    this.app.selectOverlayForEditing(id);
+                }
+            });
+        }
         
-        this.elements.qrBtnDefault.addEventListener('click', () => { if (this.app.employeeData?.contact.telegram) this.app.addQrCodeOverlay(this.app.employeeData.contact.telegram); });
-        this.elements.qrBtnCustom.addEventListener('click', () => this.app.addQrCodeOverlay(this.elements.qrLinkInput.value));
+        if (this.elements.qrBtnDefault) {
+            this.elements.qrBtnDefault.addEventListener('click', () => { if (this.app.employeeData?.contact.telegram) this.app.addQrCodeOverlay(this.app.employeeData.contact.telegram); });
+        }
+        if (this.elements.qrBtnCustom) {
+            this.elements.qrBtnCustom.addEventListener('click', () => this.app.addQrCodeOverlay(this.elements.qrLinkInput.value));
+        }
         
-        // Новый обработчик для чекбокса логотипа
-        this.elements.showLogoCheckbox.addEventListener('change', (e) => {
-            this.app.toggleLogoOverlay(e.target.checked);
-        });
+        if (this.elements.showLogoCheckbox) {
+            this.elements.showLogoCheckbox.addEventListener('change', (e) => {
+                this.app.toggleLogoOverlay(e.target.checked);
+            });
+        }
         
-        this.elements.imageInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (event) => this.app.addImageOverlay(event.target.result, 'custom-image');
-                reader.readAsDataURL(file);
-            }
-        });
+        if (this.elements.imageInput) {
+            this.elements.imageInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => this.app.addImageOverlay(event.target.result, 'custom-image');
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
 
-        this.elements.presetBackgroundsGallery.addEventListener('click', (e) => {
-            if (e.target.tagName === 'IMG' && e.target.dataset.filename) {
-                this.app.selectPresetBackground(e.target.dataset.filename);
-            }
-        });
+        if (this.elements.presetBackgroundsGallery) {
+            this.elements.presetBackgroundsGallery.addEventListener('click', (e) => {
+                if (e.target.tagName === 'IMG' && e.target.dataset.filename) {
+                    this.app.selectPresetBackground(e.target.dataset.filename);
+                }
+            });
+        }
 
-        this.elements.applyPresetBgBtn.addEventListener('click', () => {
-            this.app.applyPresetBackground();
-        });
+        if (this.elements.applyPresetBgBtn) {
+            this.elements.applyPresetBgBtn.addEventListener('click', () => {
+                this.app.applyPresetBackground();
+            });
+        }
 
+        // НОВЫЙ ОБРАБОТЧИК: Применение пресета цветов
+        if (this.elements.companyPresetSelect) {
+            this.elements.companyPresetSelect.addEventListener('change', (e) => {
+                const companyName = e.target.value;
+                if (companyName !== 'default') {
+                    this.app.applyCompanyPreset(companyName);
+                }
+            });
+        }
 
-        this.elements.privacyLowBtn.addEventListener('click', () => this.app.updatePrivacyLevel('low'));
-        this.elements.privacyMediumBtn.addEventListener('click', () => this.app.updatePrivacyLevel('medium'));
-        this.elements.privacyHighBtn.addEventListener('click', () => this.app.updatePrivacyLevel('high'));
-        this.elements.showPrivacyCheckbox.addEventListener('change', () => this.app.refreshPrivacyOverlay());
-        this.elements.announcementBtn.addEventListener('click', () => this.app.addCustomTextOverlay());
+        if (this.elements.privacyLowBtn) {
+             this.elements.privacyLowBtn.addEventListener('click', () => this.app.updatePrivacyLevel('low'));
+        }
+        if (this.elements.privacyMediumBtn) {
+             this.elements.privacyMediumBtn.addEventListener('click', () => this.app.updatePrivacyLevel('medium'));
+        }
+        if (this.elements.privacyHighBtn) {
+             this.elements.privacyHighBtn.addEventListener('click', () => this.app.updatePrivacyLevel('high'));
+        }
+        if (this.elements.showPrivacyCheckbox) {
+             this.elements.showPrivacyCheckbox.addEventListener('change', () => this.app.refreshPrivacyOverlay());
+        }
+        if (this.elements.announcementBtn) {
+            this.elements.announcementBtn.addEventListener('click', () => this.app.addCustomTextOverlay());
+        }
         
+        // Редакторы
         const textEditorInputs = [ this.elements.fontSizeInput, this.elements.textColorInput, this.elements.hasBackgroundCheckbox, this.elements.bgColorInput, this.elements.bgOpacitySlider, this.elements.posXSlider, this.elements.posYSlider ];
-        textEditorInputs.forEach(input => input.addEventListener('input', () => this.updateSelectedTextOverlayFromEditor()));
+        textEditorInputs.forEach(input => {
+            if(input) input.addEventListener('input', () => this.updateSelectedTextOverlayFromEditor());
+        });
         
         const qrEditorInputs = [ this.elements.qrPosXSlider, this.elements.qrPosYSlider ];
-        qrEditorInputs.forEach(input => input.addEventListener('input', () => this.updateSelectedQrOverlayFromEditor()));
+        qrEditorInputs.forEach(input => {
+            if(input) input.addEventListener('input', () => this.updateSelectedQrOverlayFromEditor());
+        });
         
         const imageEditorInputs = [ this.elements.imagePosXSlider, this.elements.imagePosYSlider, this.elements.imageSizeSlider ];
-        imageEditorInputs.forEach(input => input.addEventListener('input', () => this.updateSelectedImageOverlayFromEditor()));
-
-
-        this.elements.alignTL.addEventListener('click', () => this.alignSelectedOverlay('tl'));
-        this.elements.alignTR.addEventListener('click', () => this.alignSelectedOverlay('tr'));
-        this.elements.alignBL.addEventListener('click', () => this.alignSelectedOverlay('bl'));
-        this.elements.alignBR.addEventListener('click', () => this.alignSelectedOverlay('br'));
-        this.elements.interactionCanvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
-        this.elements.interactionCanvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
-        this.elements.interactionCanvas.addEventListener('mouseup', () => this.handleMouseUp());
-        this.elements.interactionCanvas.addEventListener('mouseleave', () => this.handleMouseUp());
-        this.elements.regenBtn.addEventListener('click', () => this.app.regenerateBackground(true));
-        this.elements.randomBtn.addEventListener('click', () => {
-            const randomPleasantPair=()=>{const h1=Math.floor(Math.random()*360),delta=20+Math.floor(Math.random()*120),h2=(h1+delta)%360,s1=60+Math.floor(Math.random()*30),s2=60+Math.floor(Math.random()*30),l1=42+Math.floor(Math.random()*18),l2=42+Math.floor(Math.random()*18),hslToRgb=(h,s,l)=>{s/=100;l/=100;const c=(1-Math.abs(2*l-1))*s,x=c*(1-Math.abs((h/60)%2-1)),m=l-c/2;let r1=0,g1=0,b1=0;if(0<=h&&h<60){r1=c;g1=x;b1=0}else if(60<=h&&h<120){r1=x;g1=c;b1=0}else if(120<=h&&h<180){r1=0;g1=c;b1=x}else if(180<=h&&h<240){r1=0;g1=x;b1=c}else if(240<=h&&h<300){r1=x;g1=0;b1=c}else{r1=c;g1=0;b1=x}return{r:Math.round((r1+m)*255),g:Math.round((g1+m)*255),b:Math.round((b1+m)*255)}},rgbToHexFast=(r,g,b)=>"#"+[r,g,b].map(v=>v.toString(16).padStart(2,"0")).join(""),c1=hslToRgb(h1,s1,l1),c2=hslToRgb(h2,s2,l2);return[rgbToHexFast(c1.r,c1.g,c1.b),rgbToHexFast(c2.r,c2.g,c2.b)]};
-            const [p,s]=randomPleasantPair();this.elements.primaryColor.value=p;this.elements.secondaryColor.value=s;this.elements.cellInput.value=Math.floor(80+Math.random()*120);this.elements.jitterInput.value=(.35+Math.random()*.5).toFixed(2);this.app.regenerateBackground(true)
+        imageEditorInputs.forEach(input => {
+            if(input) input.addEventListener('input', () => this.updateSelectedImageOverlayFromEditor());
         });
-        this.elements.applyBgBtn.addEventListener('click', () => this.app.applyGeneratedBackground());
+
+
+        if (this.elements.alignTL) {
+            this.elements.alignTL.addEventListener('click', () => this.alignSelectedOverlay('tl'));
+        }
+        if (this.elements.alignTR) {
+            this.elements.alignTR.addEventListener('click', () => this.alignSelectedOverlay('tr'));
+        }
+        if (this.elements.alignBL) {
+            this.elements.alignBL.addEventListener('click', () => this.alignSelectedOverlay('bl'));
+        }
+        if (this.elements.alignBR) {
+            this.elements.alignBR.addEventListener('click', () => this.alignSelectedOverlay('br'));
+        }
+        
+        if (this.elements.interactionCanvas) {
+            this.elements.interactionCanvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
+            this.elements.interactionCanvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+            this.elements.interactionCanvas.addEventListener('mouseup', () => this.handleMouseUp());
+            this.elements.interactionCanvas.addEventListener('mouseleave', () => this.handleMouseUp());
+        }
+        
+        if (this.elements.regenBtn) {
+            this.elements.regenBtn.addEventListener('click', () => this.app.regenerateBackground(true));
+        }
+        if (this.elements.randomBtn) {
+            this.elements.randomBtn.addEventListener('click', () => {
+                const randomPleasantPair=()=>{const h1=Math.floor(Math.random()*360),delta=20+Math.floor(Math.random()*120),h2=(h1+delta)%360,s1=60+Math.floor(Math.random()*30),s2=60+Math.random()*30,l1=42+Math.floor(Math.random()*18),l2=42+Math.floor(Math.random()*18),hslToRgb=(h,s,l)=>{s/=100;l/=100;const c=(1-Math.abs(2*l-1))*s,x=c*(1-Math.abs((h/60)%2-1)),m=l-c/2;let r1=0,g1=0,b1=0;if(0<=h&&h<60){r1=c;g1=x;b1=0}else if(60<=h&&h<120){r1=x;g1=c;b1=0}else if(120<=h&&h<180){r1=0;g1=c;b1=x}else if(180<=h&&h<240){r1=0;g1=x;b1=c}else if(240<=h&&h<300){r1=x;g1=0;b1=c}else{r1=c;g1=0;b1=x}return{r:Math.round((r1+m)*255),g:Math.round((g1+m)*255),b:Math.round((b1+m)*255)}},rgbToHexFast=(r,g,b)=>"#"+[r,g,b].map(v=>v.toString(16).padStart(2,"0")).join(""),c1=hslToRgb(h1,s1,l1),c2=hslToRgb(h2,s2,l2);return[rgbToHexFast(c1.r,c1.g,c1.b),rgbToHexFast(c2.r,c2.g,c2.b)]};
+                const [p,s]=randomPleasantPair();this.elements.primaryColor.value=p;this.elements.secondaryColor.value=s;this.elements.cellInput.value=Math.floor(80+Math.random()*120);this.elements.jitterInput.value=(.35+Math.random()*.5).toFixed(2);this.app.regenerateBackground(true)
+            });
+        }
+        if (this.elements.applyBgBtn) {
+            this.elements.applyBgBtn.addEventListener('click', () => this.app.applyGeneratedBackground());
+        }
+    },
+
+    // НОВАЯ ФУНКЦИЯ: Заполнение селектора пресетами
+    renderCompanyPresets(presets) {
+        const select = this.elements.companyPresetSelect;
+        if (!select) return;
+
+        // Удаляем все, кроме первого (default)
+        while (select.children.length > 1) {
+            select.removeChild(select.lastChild);
+        }
+
+        Object.keys(presets).forEach(name => {
+            const option = document.createElement('option');
+            option.value = name;
+            option.textContent = name;
+            select.appendChild(option);
+        });
     },
     
-    // Новая функция для обновления визуального выделения в галерее
     updateSelectedPreset(selectedFilename) {
-        const images = this.elements.presetBackgroundsGallery.querySelectorAll('img');
-        images.forEach(img => {
+        const images = this.elements.presetBackgroundsGallery?.querySelectorAll('img');
+        images?.forEach(img => {
             img.classList.toggle('selected', img.dataset.filename === selectedFilename);
         });
     },
 
     renderPresetBackgrounds(files) {
-        this.elements.presetBackgroundsGallery.innerHTML = '';
+        const gallery = this.elements.presetBackgroundsGallery;
+        if (!gallery) return;
+
+        gallery.innerHTML = '';
         if (files && files.length > 0) {
             files.forEach(file => {
                 const img = document.createElement('img');
                 img.src = `backgrounds/${file}`;
                 img.dataset.filename = file;
                 img.alt = file;
-                this.elements.presetBackgroundsGallery.appendChild(img);
+                gallery.appendChild(img);
             });
         } else {
-            this.elements.presetBackgroundsGallery.innerHTML = '<p style="font-size: 0.8em; color: #888;">Нет готовых фонов в папке /public/backgrounds</p>';
+            gallery.innerHTML = '<p style="font-size: 0.8em; color: #888;">Нет готовых фонов в папке /public/backgrounds</p>';
         }
     },
 
     renderLayersPanel() {
-        this.elements.layersPanel.innerHTML = '';
+        const panel = this.elements.layersPanel;
+        if (!panel) return;
+
+        panel.innerHTML = '';
         const overlays = videoProcessor.state.overlays;
-        if (overlays.length === 0) { this.elements.layersPanel.innerHTML = '<p style="font-size: 0.8em; color: #888;">Нет активных слоев</p>'; return; }
+        if (overlays.length === 0) { panel.innerHTML = '<p style="font-size: 0.8em; color: #888;">Нет активных слоев</p>'; return; }
+        
         [...overlays].reverse().forEach(overlay => {
             const item = document.createElement('div'); 
             item.className = 'layer-item';
-            item.dataset.id = overlay.id; // Добавлено для выбора слоя
+            item.dataset.id = overlay.id; 
             const nameSpan = document.createElement('span'); 
             let name = 'Layer';
             if (overlay.type === 'text') name = `Text: "${overlay.data.text.split('\n')[0].substring(0, 20)}..."`;
@@ -196,16 +280,24 @@ const ui = {
             
             item.appendChild(nameSpan); 
             item.appendChild(deleteBtn); 
-            this.elements.layersPanel.appendChild(item);
+            panel.appendChild(item);
         });
     },
 
 
-
-    updatePrivacyPreview(text) { if (this.elements.privacyPreview) { const content = this.elements.privacyPreview.querySelector('p'); if (content) content.innerText = text || 'Нет данных для отображения.'; } },
-    setGeneratorColors(primary, secondary) { if (this.elements.primaryColor && this.elements.secondaryColor) { this.elements.primaryColor.value = primary; this.elements.secondaryColor.value = secondary; } },
+    updatePrivacyPreview(text) { 
+        if (this.elements.privacyPreview) { 
+            const content = this.elements.privacyPreview.querySelector('p'); 
+            if (content) content.innerText = text || 'Нет данных для отображения.'; 
+        } 
+    },
     
-    // --- Interaction and Bounds ---
+    setGeneratorColors(primary, secondary) { 
+        if (this.elements.primaryColor && this.elements.secondaryColor) { 
+            this.elements.primaryColor.value = primary; 
+            this.elements.secondaryColor.value = secondary; 
+        } 
+    },
     
     getOverlayBounds(overlay) {
         if (!overlay) return null;
@@ -281,8 +373,6 @@ const ui = {
     showImageEditor(overlay) { this.elements.imageEditor.style.display = 'block'; this.updateImageEditorFromOverlay(overlay); },
     hideImageEditor() { this.elements.imageEditor.style.display = 'none'; },
 
-    // --- Update Editors FROM Overlay Data ---
-    
     updateTextEditorFromOverlay(overlay) {
         if (!overlay || overlay.type !== 'text') return;
         const bounds = this.getTextOverlayBounds(overlay);
@@ -317,8 +407,6 @@ const ui = {
         this.elements.imagePosYSlider.value = overlay.data.y;
     },
 
-    // --- Update Overlay Data FROM Editors ---
-
     updateSelectedTextOverlayFromEditor() {
         if (!this.app.selectedOverlayId) return;
         const newData = {
@@ -348,7 +436,7 @@ const ui = {
         const newWidth = parseFloat(this.elements.imageSizeSlider.value);
         const newData = {
             width: newWidth,
-            height: newWidth / overlay.data.aspectRatio, // Maintain aspect ratio
+            height: newWidth / overlay.data.aspectRatio, 
             x: parseFloat(this.elements.imagePosXSlider.value),
             y: parseFloat(this.elements.imagePosYSlider.value),
         };
@@ -358,7 +446,6 @@ const ui = {
     
     alignSelectedOverlay(corner) {
         const overlay = videoProcessor.getOverlayById(this.app.selectedOverlayId);
-        // Этот функционал предназначен только для текста
         if (!overlay || overlay.type !== 'text') return; 
         const bounds = this.getTextOverlayBounds(overlay), margin = 20;
         let newX, newY;

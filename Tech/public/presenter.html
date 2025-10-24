@@ -7,7 +7,10 @@
 </head>
 <body>
     <header class="main-header">
-        <h1>ПИРАТЫ ОБСКОГО МОРЯ</h1>
+        <h1>
+            <img src="logo.png" alt="Логотип Пиратов Обского моря" class="header-logo"> 
+            ПИРАТЫ ОБСКОГО МОРЯ
+        </h1>
     </header>
 
     <div class="main-container">
@@ -99,12 +102,18 @@
             </fieldset>
 
             <fieldset>
+                <legend>Пресеты корпоративных цветов</legend>
+                <select id="company-preset-select">
+                    <option value="default">Выберите компанию</option>
+                    </select>
+            </fieldset>
+
+            <fieldset>
                 <legend>Генератор корпоративного фона</legend>
                 <div class="controls-row"><label>primary <input id="primary" type="color"></label><label>secondary <input id="secondary" type="color"></label></div>
                 <div class="controls-row"><label>cell(px) <input id="cell" type="number" min="0" step="1" value="120"></label><label>jitter(0-1) <input id="jitter" type="number" min="0" max="1" step="0.05" value="0.6"></label></div>
                 <button id="regen">Перегенерировать</button>
                 <button id="random">Случайный фон</button>
-                <button id="applyBg">Применить фон к видео</button>
                 <canvas id="previewCnv" width="320" height="180"></canvas>
             </fieldset>
 
@@ -112,7 +121,7 @@
                 <legend>Готовые фоны</legend>
                 <div id="preset-backgrounds-gallery">
                     </div>
-                <button id="applyPresetBgBtn" style="margin-top: 10px;">Применить фон</button>
+               <button id="applyPresetBgBtn" style="margin-top: 10px;">Применить фон</button>
             </fieldset>
         </div>
     </div>

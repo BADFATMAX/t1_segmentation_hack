@@ -18,7 +18,21 @@ body {
     flex-direction: column;
     height: 100vh;
 }
+.main-header h1 {
+    display: flex; /* Используем flexbox для выравнивания */
+    align-items: center; /* Выравниваем элементы по центру по вертикали */
+    gap: 15px; /* Промежуток между логотипом и текстом */
+    font-size: 2.5em; /* Можно настроить размер заголовка */
+    color: #08B9A6; /* Цвет текста заголовка */
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3); /* Тень для объема */
+    margin: 0; /* Убираем стандартные отступы */
+}
 
+.header-logo {
+    height: 60px; /* Высота логотипа. Можно настроить */
+    width: auto; /* Автоматическая ширина для сохранения пропорций */
+    vertical-align: middle; /* Выравнивание по середине с текстом, если не используем flex */
+}
 .main-header {
     background-color: #111;
     color: var(--light-text);
