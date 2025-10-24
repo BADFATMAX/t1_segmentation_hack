@@ -3,8 +3,6 @@
 
 async function initSegmenter() {
     const seg = new VideoSegmenter({ downsampleRatio: 0.4, frameSkip: 0 });
-    // The model path in the original code was './RobustVideoMatting/model/model.json'
-    // but based on the public folder structure, it should be relative to the root.
     await seg.loadModel("/RobustVideoMatting/model/model.json");
     await seg.setBackground("wallpaper.png");
     return seg;
@@ -20,8 +18,6 @@ const videoProcessor = {
     
     async init() {
         if (!this.segmenter) this.segmenter = await initSegmenter();
-        // This interval is redundant if reload is handled on predict.
-        // Keeping it as a fallback.
         setInterval(async () => {
             if (this.segmenter) {
                 await this.segmenter.reloadBackground("wallpaper.png");
@@ -55,7 +51,6 @@ const videoProcessor = {
             segBitmap.close();
         } catch (err) {
             console.error("Segmentation error:", err);
-            // Pass the original frame through on error to avoid stream closure
             controller.enqueue(frame);
         }
     },
@@ -67,7 +62,6 @@ const videoProcessor = {
             console.warn("Segmenter not ready yet, cannot set background.");
             return;
         }
-        // Always use a cache-buster to ensure the latest wallpaper is fetched
         const path = (type === 'preset' && data) ? `/backgrounds/${data}` : data;
         if (typeof path === "string") {
             await this.segmenter.setBackground(`${path}?t=${Date.now()}`);
@@ -91,7 +85,6 @@ const videoProcessor = {
     updateOverlay(id, newData) {
         const overlay = this.getOverlayById(id);
         if (overlay) {
-            // Merge new data into existing data
             Object.assign(overlay.data, newData);
         }
     },
@@ -114,9 +107,13 @@ const videoProcessor = {
         this.state.overlays.forEach(overlay => {
             if (overlay.type === 'scrolling-text') {
                 if (overlay.data.x === undefined) overlay.data.x = this.canvas.width;
-                overlay.data.x -= overlay.data.speed || 2;
+                // При прокрутке текста нужно обязательно использовать контекст для измерения ширины
+                this.ctx.save();
                 this.ctx.font = `${overlay.data.fontSize}px Arial`;
                 const textWidth = this.ctx.measureText(overlay.data.text).width;
+                this.ctx.restore();
+
+                overlay.data.x -= overlay.data.speed || 2;
                 if (overlay.data.x < -textWidth) overlay.data.x = this.canvas.width;
             }
         });
@@ -135,6 +132,7 @@ const videoProcessor = {
 
     drawText(data) {
         const lines = data.text.split('\n');
+        this.ctx.save();
         this.ctx.font = `${data.fontSize}px ${data.fontFamily || 'Arial'}`;
         this.ctx.textBaseline = 'top';
 
@@ -150,25 +148,30 @@ const videoProcessor = {
             const boxWidth = maxWidth + padding * 2;
             const boxHeight = (lines.length * data.fontSize) + padding * 2;
             
+            // Draw Background
             this.ctx.globalAlpha = data.backgroundOpacity !== undefined ? data.backgroundOpacity : 0.75;
             this.ctx.fillStyle = data.backgroundColor;
             this.ctx.fillRect(data.x, data.y, boxWidth, boxHeight);
             this.ctx.globalAlpha = 1.0;
             
+            // Draw Text (with padding)
             this.ctx.fillStyle = data.textColor;
             lines.forEach((line, index) => {
                 this.ctx.fillText(line, data.x + padding, data.y + padding + index * data.fontSize);
             });
 
         } else {
+             // Draw Text (without background, no padding)
              this.ctx.fillStyle = data.textColor;
              lines.forEach((line, index) => {
                 this.ctx.fillText(line, data.x, data.y + index * data.fontSize);
             });
         }
+        this.ctx.restore();
     },
 
     drawScrollingText(data) {
+        this.ctx.save();
         this.ctx.font = `${data.fontSize}px Arial`;
         this.ctx.textBaseline = 'middle';
         const bgHeight = data.fontSize + (data.padding || 10) * 2;
@@ -176,30 +179,34 @@ const videoProcessor = {
         this.ctx.fillRect(0, data.y, this.canvas.width, bgHeight);
         this.ctx.fillStyle = data.textColor;
         this.ctx.fillText(data.text, data.x, data.y + bgHeight / 2);
+        this.ctx.restore();
     },
 
     drawQr(data) {
+        this.ctx.save();
         if (data.qrCanvas) {
+            // Draw white background for QR
             this.ctx.fillStyle = 'white';
             this.ctx.fillRect(data.x - 5, data.y - 5, data.width + 10, data.height + 10);
             this.ctx.drawImage(data.qrCanvas, data.x, data.y, data.width, data.height);
         }
+        this.ctx.restore();
     },
 
     drawImage(data) {
+        this.ctx.save();
         if (data.imageElement && data.imageElement.complete) {
             this.ctx.drawImage(data.imageElement, data.x, data.y, data.width, data.height);
         }
+        this.ctx.restore();
     },
 };
 
-// Helper to bridge MediaStreamTrack with our processor
 function createProcessedTrack({ track, processor }) {
     const trackProcessor = new MediaStreamTrackProcessor({ track });
     const trackGenerator = new MediaStreamTrackGenerator({ kind: track.kind });
     const transformer = new TransformStream({
         async start(controller) {
-            // Initialize the processor when the stream starts
             await processor.init();
         },
         transform: (frame, controller) => processor.transform(frame, controller)

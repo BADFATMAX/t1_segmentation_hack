@@ -18,13 +18,11 @@
         </div>
 
         <div class="controls-container">
-            <!-- Управление слоями -->
             <fieldset>
                 <legend>Управление слоями</legend>
                 <div id="layers-panel"></div>
             </fieldset>
 
-            <!-- Управление приватностью -->
             <fieldset>
                 <legend>Уровень приватности</legend>
                 <div class="controls-row button-group">
@@ -42,7 +40,6 @@
                 </div>
             </fieldset>
 
-            <!-- Редактор текста -->
             <fieldset id="text-editor" style="display: none;">
                 <legend>Редактор текста</legend>
                 <div><label for="font-size">Размер шрифта:</label><input type="number" id="font-size" min="10" max="200" value="48"></div>
@@ -56,7 +53,6 @@
                 <div class="controls-row button-group"><button id="align-tl">↖️</button><button id="align-tr">↗️</button><button id="align-bl">↙️</button><button id="align-br">↘️</button></div>
             </fieldset>
 
-            <!-- Вставить текст -->
             <fieldset>
                 <legend>Вставить текст</legend>
                 <input id="announcement" type="text" placeholder="Введите ваш текст...">
@@ -72,7 +68,6 @@
             </fieldset>
 
 
-            <!-- Редактор QR-кода -->
             <fieldset id="qr-editor" style="display: none;">
                 <legend>Редактор QR-кода</legend>
                 <div><label for="qr-editor-link">Ссылка (только чтение):</label><input type="text" id="qr-editor-link" readonly></div>
@@ -81,15 +76,17 @@
                 <label for="qr-pos-y">Позиция Y:</label><input type="range" id="qr-pos-y" min="0" max="720" step="1">
             </fieldset>
             
-            <!-- ИЗМЕНЕННЫЙ БЛОК -->
             <fieldset>
                 <legend>Изображения</legend>
+                <div class="controls-row">
+                    <label for="show-logo">Отобразить логотип</label>
+                    <input type="checkbox" id="show-logo">
+                </div>
+                <hr>
                 <label for="image">Своё изображение:</label>
                 <input type="file" id="image" accept="image/*" />
-                <button id="logoBtn">Отобразить лого</button>
             </fieldset>
 
-            <!-- НОВЫЙ БЛОК: Редактор изображения -->
             <fieldset id="image-editor" style="display: none;">
                 <legend>Редактор изображения</legend>
                 <label for="image-size">Размер:</label>
@@ -111,12 +108,10 @@
                 <canvas id="previewCnv" width="320" height="180"></canvas>
             </fieldset>
 
-            <!-- ИЗМЕНЕННЫЙ БЛОК -->
             <fieldset>
                 <legend>Готовые фоны</legend>
                 <div id="preset-backgrounds-gallery">
-                    <!-- Миниатюры будут вставлены сюда динамически -->
-                </div>
+                    </div>
                 <button id="applyPresetBgBtn" style="margin-top: 10px;">Применить фон</button>
             </fieldset>
         </div>

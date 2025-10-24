@@ -25,8 +25,8 @@ class VideoSegmenter {
     }
 
     async setBackground(pngUrl) {
-        // cache-buster
-        const url = `${pngUrl}?t=${Date.now()}`;
+        // cache-buster - добавил проверку наличия '?'
+        const url = pngUrl.includes('?') ? pngUrl : `${pngUrl}?t=${Date.now()}`; 
         const img = new Image();
         img.src = url;
         await img.decode();
@@ -45,7 +45,16 @@ class VideoSegmenter {
 
     async predict(frameLike) {
         if (!this.model) throw new Error('Model not loaded');
-        if (!this.bgBitmap) throw new Error('Background not set');
+        if (!this.bgBitmap) { 
+            // Если фон не установлен, пытаемся загрузить дефолтный
+            await this.reloadBackground("wallpaper.png"); 
+            if (!this.bgBitmap) {
+                // Если и это не помогло, используем черный фон, чтобы избежать краша
+                console.warn("Background bitmap is null, skipping segmentation.");
+                if (frameLike instanceof VideoFrame) return await createImageBitmap(frameLike);
+                return frameLike;
+            }
+        }
 
         this._frameCount++;
         if (this.frameSkip > 0 && this._frameCount % this.frameSkip !== 0 && this._lastBitmap)
@@ -60,6 +69,11 @@ class VideoSegmenter {
 
         const src = tf.tidy(() => tf.browser.fromPixels(bitmap).toFloat().div(255).expandDims(0));
         if (frameLike instanceof VideoFrame) bitmap.close();
+
+        // Проверка размера state и входных данных
+        // В RVM часто возникает ошибка, если state имеет неправильный размер (например, [1,1,1,1] после инициализации)
+        // Но при первом запуске модель должна сама определить размер. 
+        // Здесь оставляем оригинальную логику, предполагая, что tf.zeros корректно обрабатывается при первом вызове.
 
         const [fgr, pha, r1o, r2o, r3o, r4o] = await this.model.executeAsync(
             { src, ...this.state, downsample_ratio: this.downsampleRatio },

@@ -28,6 +28,8 @@ class App {
         this.refreshPrivacyOverlay();
         ui.renderLayersPanel();
         await this.loadPresetBackgrounds();
+        // Устанавливаем начальное состояние чекбокса логотипа, если оно нужно
+        ui.elements.showLogoCheckbox.checked = false; 
     }
 
     async loadEmployeeData() {
@@ -70,6 +72,7 @@ class App {
         this.selectOverlayForEditing(null);
         if (ui.elements.showPrivacyCheckbox.checked) {
             let text = '';
+            // Fix: Added missing properties to text generation based on the data structure in employee.json
             switch (this.currentPrivacyLevel) {
                 case 'high': text = `${this.employeeData.full_name}\n${this.employeeData.position}\n${this.employeeData.company}\n${this.employeeData.department}\n${this.employeeData.office_location}\n${this.employeeData.contact.email}\n${this.employeeData.contact.telegram}`; break;
                 case 'medium': text = `${this.employeeData.full_name}\n${this.employeeData.position}\n${this.employeeData.company}\n${this.employeeData.department}\n${this.employeeData.office_location}`; break;
@@ -77,9 +80,22 @@ class App {
             }
             ui.updatePrivacyPreview(text);
             if (text) {
-                const style = { text, x: 25, y: 25, fontSize: 20, fontFamily: 'Arial', textColor: '#000000', hasBackground: true, backgroundColor: '#FFFFFF', backgroundOpacity: 0.75 };
+                // Initial coordinates for the privacy badge
+                const initialX = 20, initialY = 20; 
+                const style = { 
+                    text, 
+                    x: initialX, 
+                    y: initialY, 
+                    fontSize: 20, 
+                    fontFamily: 'Arial', 
+                    textColor: '#000000', 
+                    hasBackground: true, 
+                    backgroundColor: '#FFFFFF', 
+                    backgroundOpacity: 0.75 
+                };
                 const id = videoProcessor.addOverlay({ type: 'text', group: 'privacy', data: style });
-                this.selectOverlayForEditing(id);
+                // We select the privacy overlay for editing controls to be updated, but usually it shouldn't be draggable
+                this.selectOverlayForEditing(id); 
             }
         } else { ui.updatePrivacyPreview(''); }
         ui.renderLayersPanel();
@@ -116,6 +132,12 @@ class App {
 
     addImageOverlay(src, group = 'custom') {
         if (!src) return;
+
+        // Удаляем предыдущий логотип, если добавляется новый логотип
+        if (group === 'logo') {
+            videoProcessor.removeOverlaysByGroup('logo');
+        }
+
         const imageElement = new Image();
         imageElement.crossOrigin = "anonymous";
         imageElement.src = src;
@@ -130,6 +152,46 @@ class App {
         imageElement.onerror = () => { alert('Не удалось загрузить изображение: ' + src); };
     }
     
+    // Новая функция для переключения отображения логотипа
+    toggleLogoOverlay(visible) {
+        if (visible) {
+            const existingLogo = videoProcessor.state.overlays.find(o => o.group === 'logo');
+            if (!existingLogo && this.employeeData?.branding.logo_url) {
+                // Используем небольшие координаты, чтобы логотип не мешал
+                const initialX = 1280 - 200; 
+                const initialY = 720 - 200; 
+
+                const imageElement = new Image();
+                imageElement.crossOrigin = "anonymous";
+                imageElement.src = this.employeeData.branding.logo_url;
+                
+                imageElement.onload = () => {
+                    const defaultWidth = 100; // Меньший размер для логотипа
+                    const aspectRatio = imageElement.naturalWidth / imageElement.naturalHeight;
+                    const data = { 
+                        src: this.employeeData.branding.logo_url, 
+                        imageElement, 
+                        x: initialX - defaultWidth, 
+                        y: initialY - (defaultWidth / aspectRatio), 
+                        width: defaultWidth, 
+                        height: defaultWidth / aspectRatio, 
+                        aspectRatio 
+                    };
+                    const id = videoProcessor.addOverlay({ type: 'image', group: 'logo', data });
+                    this.selectOverlayForEditing(id);
+                    ui.renderLayersPanel();
+                };
+            }
+        } else {
+            videoProcessor.removeOverlaysByGroup('logo');
+            if (this.selectedOverlayId && !videoProcessor.getOverlayById(this.selectedOverlayId)) {
+                 this.selectOverlayForEditing(null);
+            }
+            ui.renderLayersPanel();
+        }
+    }
+
+
     deleteOverlay(id) {
         if (id === this.selectedOverlayId) this.selectOverlayForEditing(null);
         videoProcessor.removeOverlayById(id);

@@ -19,15 +19,18 @@ app.get('/', (req, res) => {
 // Маршрут для получения списка готовых фонов
 app.get('/list-backgrounds', (req, res) => {
   const backgroundsDir = path.join(__dirname, 'public', 'backgrounds');
+  // Создаем папку, если она не существует
+  if (!fs.existsSync(backgroundsDir)) {
+      fs.mkdirSync(backgroundsDir, { recursive: true });
+  }
+
   fs.readdir(backgroundsDir, (err, files) => {
     if (err) {
       console.error('Could not list the directory.', err);
-      if (err.code === 'ENOENT') {
-        return res.status(200).json([]);
-      }
       return res.status(500).json({ error: 'Failed to list background images' });
     }
     
+    // Фильтруем, чтобы оставить только изображения
     const imageFiles = files.filter(file => /\.(jpe?g|png|gif)$/i.test(file));
     res.json(imageFiles);
   });
@@ -42,7 +45,8 @@ app.post('/save-background', (req, res) => {
 
   const base64Data = imageData.replace(/^data:image\/png;base64,/, "");
   const imageBuffer = Buffer.from(base64Data, 'base64');
-  const filePath = path.join(__dirname, 'public', 'wallpaper.png');
+  // Сохраняем в корне public, чтобы segmenter.js мог найти 'wallpaper.png'
+  const filePath = path.join(__dirname, 'public', 'wallpaper.png'); 
 
   fs.writeFile(filePath, imageBuffer, (err) => {
     if (err) {
@@ -54,7 +58,7 @@ app.post('/save-background', (req, res) => {
   });
 });
 
-// НОВЫЙ МАРШРУТ для установки готового фона как wallpaper.png
+// МАРШРУТ для установки готового фона как wallpaper.png (копирование)
 app.post('/set-wallpaper', (req, res) => {
   const { filename } = req.body;
   if (!filename) {
@@ -67,7 +71,6 @@ app.post('/set-wallpaper', (req, res) => {
   fs.copyFile(sourcePath, destPath, (err) => {
     if (err) {
       console.error('Error copying file:', err);
-      // Проверяем, существует ли исходный файл
       if (err.code === 'ENOENT') {
         return res.status(404).json({ error: 'Source file not found' });
       }
