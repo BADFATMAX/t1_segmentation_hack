@@ -1,9 +1,23 @@
 // public/video-processor.js
+// Требуется segmentation.js (должен быть подключён до этого файла)
 
-function hexToRgb(hex) {
-    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : null;
+async function initSegmenter() {
+    const seg = new VideoSegmenter({ downsampleRatio: 0.4, frameSkip: 0 });
+    await seg.loadModel("/RobustVideoMatting/model/model.json");
+    await seg.setBackground("wallpaper.png");
+
+    // 🔁 Автообновление фона каждые 2 секунды
+    setInterval(async () => {
+        try {
+            await seg.reloadBackground();
+        } catch (e) {
+            console.warn("⚠️ Не удалось обновить фон:", e);
+        }
+    }, 2000);
+
+    return seg;
 }
+
 
 const videoProcessor = {
     state: {
@@ -12,22 +26,49 @@ const videoProcessor = {
     },
     canvas: new OffscreenCanvas(1, 1),
     ctx: null,
+    segmenter: null,
 
-    transform(frame, controller) {
-        if (!this.ctx) this.ctx = this.canvas.getContext('2d');
-        this.canvas.width = frame.displayWidth;
-        this.canvas.height = frame.displayHeight;
-
-        this.updateOverlayStates();
-        this.drawBackground(frame);
-        this.ctx.drawImage(frame, 0, 0);
-        this.drawOverlays();
-
-        const newFrame = new VideoFrame(this.canvas, { timestamp: frame.timestamp });
-        frame.close();
-        controller.enqueue(newFrame);
+    async init() {
+        if (!this.segmenter) this.segmenter = await initSegmenter();
     },
-    
+
+    async transform(frame, controller) {
+        try {
+            if (!this.ctx) this.ctx = this.canvas.getContext('2d');
+            this.canvas.width = frame.displayWidth;
+            this.canvas.height = frame.displayHeight;
+
+            // === если сегментер ещё не создан — создаём прямо здесь ===
+            if (!this.segmenter) {
+                console.log("⏳ Initializing segmenter...");
+                this.segmenter = new VideoSegmenter({ downsampleRatio: 0.4, frameSkip: 0 });
+                await this.segmenter.loadModel("/RobustVideoMatting/model/model.json");
+                await this.segmenter.setBackground("wallpaper.png");
+                console.log("✅ Segmenter ready");
+            }
+
+            // === предикт ===
+            const segBitmap = await this.segmenter.predict(frame);
+
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            this.ctx.drawImage(segBitmap, 0, 0);
+
+            this.updateOverlayStates();
+            this.drawOverlays();
+
+            const newFrame = new VideoFrame(this.canvas, { timestamp: frame.timestamp });
+            controller.enqueue(newFrame);
+
+            frame.close();
+            segBitmap.close();
+        } catch (err) {
+            console.error("Segmentation error:", err);
+            controller.enqueue(frame); // fallback
+        }
+    },
+
+
+
     updateOverlayStates() {
         this.state.overlays.forEach(overlay => {
             if (overlay.type === 'scrolling-text') {
@@ -39,8 +80,6 @@ const videoProcessor = {
             }
         });
     },
-
-    drawBackground(frame) { /* ... без изменений ... */ },
 
     drawOverlays() {
         this.state.overlays.forEach(overlay => {
@@ -57,25 +96,12 @@ const videoProcessor = {
         const lines = data.text.split('\n');
         this.ctx.font = `${data.fontSize}px ${data.fontFamily || 'Arial'}`;
         this.ctx.textBaseline = 'top';
-        if (data.hasBackground) {
-            let maxWidth = 0;
-            lines.forEach(line => { const metrics = this.ctx.measureText(line); if (metrics.width > maxWidth) maxWidth = metrics.width; });
-            const padding = data.fontSize * 0.2;
-            const bgHeight = (lines.length * data.fontSize) + (padding * 2);
-            const rgb = hexToRgb(data.backgroundColor);
-            const opacity = data.backgroundOpacity !== undefined ? data.backgroundOpacity : 1;
-            if (rgb) {
-                this.ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity})`;
-                this.ctx.fillRect(data.x, data.y, maxWidth + (padding * 2), bgHeight);
-            }
-        }
         this.ctx.fillStyle = data.textColor;
         lines.forEach((line, index) => {
-            const padding = data.hasBackground ? data.fontSize * 0.2 : 0;
-            this.ctx.fillText(line, data.x + padding, data.y + padding + (index * data.fontSize));
+            this.ctx.fillText(line, data.x, data.y + index * data.fontSize);
         });
     },
-    
+
     drawScrollingText(data) {
         this.ctx.font = `${data.fontSize}px Arial`;
         this.ctx.textBaseline = 'middle';
@@ -85,7 +111,7 @@ const videoProcessor = {
         this.ctx.fillStyle = data.textColor;
         this.ctx.fillText(data.text, data.x, data.y + bgHeight / 2);
     },
-    
+
     drawQr(data) {
         if (data.qrCanvas) {
             this.ctx.fillStyle = 'white';
@@ -93,27 +119,24 @@ const videoProcessor = {
             this.ctx.drawImage(data.qrCanvas, data.x, data.y, data.width, data.height);
         }
     },
-    
+
     drawImage(data) {
         if (data.imageElement && data.imageElement.complete) {
             this.ctx.drawImage(data.imageElement, data.x, data.y, data.width, data.height);
         }
     },
 
-
     addOverlay(overlay) { overlay.id = Date.now() + Math.random(); this.state.overlays.push(overlay); return overlay.id; },
-    getOverlayById(id) { return this.state.overlays.find(o => o.id === id); },
     removeOverlayById(id) { this.state.overlays = this.state.overlays.filter(o => o.id !== id); },
-    updateOverlay(id, newData) { const overlay = this.getOverlayById(id); if (overlay) Object.assign(overlay.data, newData); },
-    removeOverlaysByGroup(group) { this.state.overlays = this.state.overlays.filter(o => o.group !== group); },
     clearOverlays() { this.state.overlays = []; },
-    setBackground(type, data) { /* ... без изменений ... */ }
 };
 
 function createProcessedTrack({ track, processor }) {
     const trackProcessor = new MediaStreamTrackProcessor({ track });
     const trackGenerator = new MediaStreamTrackGenerator({ kind: track.kind });
-    const transformer = new TransformStream({ transform: (frame, controller) => processor.transform(frame, controller) });
+    const transformer = new TransformStream({
+        transform: (frame, controller) => processor.transform(frame, controller)
+    });
     trackProcessor.readable.pipeThrough(transformer).pipeTo(trackGenerator.writable);
     return trackGenerator;
 }

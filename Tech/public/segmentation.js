@@ -42,7 +42,15 @@ class VideoSegmenter {
         }
 
         // --- Подготовка входа только если реально предикт ---
-        const src = tf.tidy(() => tf.browser.fromPixels(frameLike).toFloat().div(255).expandDims(0));
+        let bitmap;
+        if (frameLike instanceof VideoFrame) {
+            bitmap = await createImageBitmap(frameLike);
+        } else {
+            bitmap = frameLike;
+        }
+        const src = tf.tidy(() => tf.browser.fromPixels(bitmap).toFloat().div(255).expandDims(0));
+        if (frameLike instanceof VideoFrame) bitmap.close();
+
         
         let ts1 = performance.now();
         const [fgr, pha, r1o, r2o, r3o, r4o] = await this.model.executeAsync(
