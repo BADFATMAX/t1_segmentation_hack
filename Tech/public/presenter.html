@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Pirates of the Ob Sea Broadcaster</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="main-header">
+        <h1>ПИРАТЫ ОБСКОГО МОРЯ</h1>
+    </header>
+
+    <div class="main-container">
+        <div class="video-container">
+            <video id="localVideo" autoplay playsinline muted></video>
+            <canvas id="interaction-canvas"></canvas> 
+            <div id="fps-counter" class="fps-counter">FPS: 0</div>
+        </div>
+
+        <div class="controls-container">
+            <!-- Управление слоями -->
+            <fieldset>
+                <legend>Управление слоями</legend>
+                <div id="layers-panel"></div>
+            </fieldset>
+
+            <!-- Управление приватностью -->
+            <fieldset>
+                <legend>Уровень приватности</legend>
+                <div class="controls-row button-group">
+                    <button id="privacy-low">Low</button>
+                    <button id="privacy-medium">Medium</button>
+                    <button id="privacy-high">High</button>
+                </div>
+                <div class="controls-row">
+                    <label for="show-privacy">Отобразить приватность</label>
+                    <input type="checkbox" id="show-privacy" checked>
+                </div>
+                <div id="privacy-preview" class="privacy-preview-box">
+                    <small>Данные, которые будут отображены на видео:</small>
+                    <p>Нажмите на уровень, чтобы увидеть данные.</p>
+                </div>
+            </fieldset>
+
+            <!-- Редактор текста -->
+            <fieldset id="text-editor" style="display: none;">
+                <legend>Редактор текста</legend>
+                <div><label for="font-size">Размер шрифта:</label><input type="number" id="font-size" min="10" max="200" value="48"></div>
+                <div><label for="text-color">Цвет текста:</label><input type="color" id="text-color" value="#000000"></div>
+                <div class="controls-row"><label for="has-background">Включить фон</label><input type="checkbox" id="has-background" checked><label for="bg-color">Цвет фона:</label><input type="color" id="bg-color" value="#FFFFFF"></div>
+                <div><label for="bg-opacity">Прозрачность фона:</label><input type="range" id="bg-opacity" min="0" max="1" step="0.05" value="0.75"></div>
+                <hr>
+                <label for="pos-x">Позиция X:</label><input type="range" id="pos-x" min="0" max="1280" step="1">
+                <label for="pos-y">Позиция Y:</label><input type="range" id="pos-y" min="0" max="720" step="1">
+                <legend>Привязать к углу</legend>
+                <div class="controls-row button-group"><button id="align-tl">↖️</button><button id="align-tr">↗️</button><button id="align-bl">↙️</button><button id="align-br">↘️</button></div>
+            </fieldset>
+
+            <!-- Вставить текст -->
+            <fieldset>
+                <legend>Вставить текст</legend>
+                <input id="announcement" type="text" placeholder="Введите ваш текст...">
+                <div class="controls-row"><label for="announcement-scrolling">Бегущая строка</label><input type="checkbox" id="announcement-scrolling"></div>
+                <button id="announcementBtn">Отобразить</button>
+            </fieldset>
+            
+            <fieldset>
+                <legend>QR-код</legend>
+                <input id="qrLink" type="text" placeholder="Поделиться ссылкой как QR">
+                <button id="qrBtnDefault">Telegram сотрудника</button>
+                <button id="qrBtnCustom">Создать QR-код</button>
+            </fieldset>
+
+
+            <!-- Редактор QR-кода -->
+            <fieldset id="qr-editor" style="display: none;">
+                <legend>Редактор QR-кода</legend>
+                <div><label for="qr-editor-link">Ссылка (только чтение):</label><input type="text" id="qr-editor-link" readonly></div>
+                <hr>
+                <label for="qr-pos-x">Позиция X:</label><input type="range" id="qr-pos-x" min="0" max="1280" step="1">
+                <label for="qr-pos-y">Позиция Y:</label><input type="range" id="qr-pos-y" min="0" max="720" step="1">
+            </fieldset>
+            
+            <!-- ИЗМЕНЕННЫЙ БЛОК -->
+            <fieldset>
+                <legend>Изображения</legend>
+                <label for="image">Своё изображение:</label>
+                <input type="file" id="image" accept="image/*" />
+                <button id="logoBtn">Отобразить лого</button>
+            </fieldset>
+
+            <!-- НОВЫЙ БЛОК: Редактор изображения -->
+            <fieldset id="image-editor" style="display: none;">
+                <legend>Редактор изображения</legend>
+                <label for="image-size">Размер:</label>
+                <input type="range" id="image-size" min="50" max="800" step="10" value="200">
+                <hr>
+                <label for="image-pos-x">Позиция X:</label>
+                <input type="range" id="image-pos-x" min="0" max="1280" step="1">
+                <label for="image-pos-y">Позиция Y:</label>
+                <input type="range" id="image-pos-y" min="0" max="720" step="1">
+            </fieldset>
+
+            <fieldset>
+                <legend>Генератор корпоративного фона</legend>
+                <div class="controls-row"><label>primary <input id="primary" type="color"></label><label>secondary <input id="secondary" type="color"></label></div>
+                <div class="controls-row"><label>cell(px) <input id="cell" type="number" min="0" step="1" value="120"></label><label>jitter(0-1) <input id="jitter" type="number" min="0" max="1" step="0.05" value="0.6"></label></div>
+                <button id="regen">Перегенерировать</button>
+                <button id="random">Случайный фон</button>
+                <button id="applyBg">Применить фон к видео</button>
+                <canvas id="previewCnv" width="320" height="180"></canvas>
+            </fieldset>
+
+            <!-- ИЗМЕНЕННЫЙ БЛОК -->
+            <fieldset>
+                <legend>Готовые фоны</legend>
+                <div id="preset-backgrounds-gallery">
+                    <!-- Миниатюры будут вставлены сюда динамически -->
+                </div>
+                <button id="applyPresetBgBtn" style="margin-top: 10px;">Применить фон</button>
+            </fieldset>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    
+    <script src="video-processor.js"></script>
+    <script src="background-generator.js"></script>
+    <script src="ui-handler.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>
