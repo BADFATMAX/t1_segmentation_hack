@@ -1,6 +1,9 @@
 # T1_segmentation_hack
 
-# Пираты Обского моря
+<h1>
+  <img src="pics/Лого.png" alt="Пиратский флаг" width="70" style="vertical-align: middle; margin-right: 10px;" />
+  Пираты Обского моря
+</h1>
 
 
 
