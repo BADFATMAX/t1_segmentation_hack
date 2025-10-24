@@ -12,22 +12,35 @@ class VideoSegmenter {
         this.bgBitmap = null;
         this._canvas = null;
         this._ctx = null;
-
-        this.frameSkip = options.frameSkip ?? 0; // обрабатывать каждый N-й кадр
+        this.frameSkip = options.frameSkip ?? 0;
         this._frameCount = 0;
         this._lastBitmap = null;
         this._lastFrame = null;
+        this._lastBgReload = 0; // время последней перезагрузки фона
     }
 
     async loadModel(modelUrl) {
         this.model = await tf.loadGraphModel(modelUrl);
+        console.log("✅ Model loaded:", modelUrl);
     }
 
     async setBackground(pngUrl) {
+        // cache-buster
+        const url = `${pngUrl}?t=${Date.now()}`;
         const img = new Image();
-        img.src = pngUrl;
+        img.src = url;
         await img.decode();
+        if (this.bgBitmap) this.bgBitmap.close?.();
         this.bgBitmap = await createImageBitmap(img);
+        console.log("✅ Background loaded:", url);
+    }
+
+    async reloadBackground(pngUrl = "wallpaper.png") {
+        // чтобы не перезагружать слишком часто
+        const now = Date.now();
+        if (now - this._lastBgReload < 1500) return;
+        this._lastBgReload = now;
+        await this.setBackground(pngUrl);
     }
 
     async predict(frameLike) {
@@ -35,30 +48,23 @@ class VideoSegmenter {
         if (!this.bgBitmap) throw new Error('Background not set');
 
         this._frameCount++;
-
-        // ⚡ Если не время делать предикт — просто наложим старый результат на новый кадр
-        if (this.frameSkip > 0 && this._frameCount % this.frameSkip !== 0 && this._lastBitmap) {
+        if (this.frameSkip > 0 && this._frameCount % this.frameSkip !== 0 && this._lastBitmap)
             return this._lastBitmap;
-        }
 
-        // --- Подготовка входа только если реально предикт ---
+        // 🔁 автообновление фона (если файл поменялся)
+        await this.reloadBackground("wallpaper.png");
+
         let bitmap;
-        if (frameLike instanceof VideoFrame) {
-            bitmap = await createImageBitmap(frameLike);
-        } else {
-            bitmap = frameLike;
-        }
+        if (frameLike instanceof VideoFrame) bitmap = await createImageBitmap(frameLike);
+        else bitmap = frameLike;
+
         const src = tf.tidy(() => tf.browser.fromPixels(bitmap).toFloat().div(255).expandDims(0));
         if (frameLike instanceof VideoFrame) bitmap.close();
 
-        
-        let ts1 = performance.now();
         const [fgr, pha, r1o, r2o, r3o, r4o] = await this.model.executeAsync(
             { src, ...this.state, downsample_ratio: this.downsampleRatio },
             ['fgr', 'pha', 'r1o', 'r2o', 'r3o', 'r4o']
         );
-        console.log(`Model inference time: ${(performance.now() - ts1).toFixed(1)} ms`);
-
 
         tf.dispose(this.state);
         this.state = { r1i: r1o, r2i: r2o, r3i: r3o, r4i: r4o };
@@ -75,30 +81,24 @@ class VideoSegmenter {
         const fgBitmap = await createImageBitmap(fgImageData);
         tf.dispose([src, fgr, pha, rgba]);
 
-        // --- Композиция с фоном ---
-        const targetW = this.bgBitmap.width || w;
-        const targetH = this.bgBitmap.height || h;
-
         if (!this._canvas) {
             this._canvas = typeof OffscreenCanvas !== 'undefined'
-                ? new OffscreenCanvas(targetW, targetH)
-                : Object.assign(document.createElement('canvas'), { width: targetW, height: targetH });
+                ? new OffscreenCanvas(w, h)
+                : Object.assign(document.createElement('canvas'), { width: w, height: h });
             this._ctx = this._canvas.getContext('2d', { willReadFrequently: true });
         }
 
-        this._ctx.clearRect(0, 0, targetW, targetH);
-        this._ctx.drawImage(this.bgBitmap, 0, 0, targetW, targetH);
-        this._ctx.drawImage(fgBitmap, 0, 0, targetW, targetH);
+        this._ctx.clearRect(0, 0, w, h);
+        this._ctx.drawImage(this.bgBitmap, 0, 0, w, h);
+        this._ctx.drawImage(fgBitmap, 0, 0, w, h);
         fgBitmap.close();
 
         const outBitmap = (this._canvas instanceof OffscreenCanvas)
             ? this._canvas.transferToImageBitmap()
             : await createImageBitmap(this._canvas);
 
-        // сохраняем для пропущенных кадров
         if (this._lastBitmap) this._lastBitmap.close?.();
         this._lastBitmap = outBitmap;
-
         return outBitmap;
     }
 

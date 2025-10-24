@@ -5,31 +5,23 @@ async function initSegmenter() {
     const seg = new VideoSegmenter({ downsampleRatio: 0.4, frameSkip: 0 });
     await seg.loadModel("/RobustVideoMatting/model/model.json");
     await seg.setBackground("wallpaper.png");
-
-    // 🔁 Автообновление фона каждые 2 секунды
-    setInterval(async () => {
-        try {
-            await seg.reloadBackground();
-        } catch (e) {
-            console.warn("⚠️ Не удалось обновить фон:", e);
-        }
-    }, 2000);
-
     return seg;
 }
 
-
 const videoProcessor = {
-    state: {
-        overlays: [],
-        background: { type: 'none', data: null },
-    },
+    state: { overlays: [], background: { type: 'none', data: null } },
     canvas: new OffscreenCanvas(1, 1),
     ctx: null,
     segmenter: null,
 
     async init() {
         if (!this.segmenter) this.segmenter = await initSegmenter();
+
+        setInterval(async () => {
+            if (this.segmenter) {
+                await this.segmenter.reloadBackground("wallpaper.png");
+            }
+        }, 2000);
     },
 
     async transform(frame, controller) {
@@ -38,18 +30,13 @@ const videoProcessor = {
             this.canvas.width = frame.displayWidth;
             this.canvas.height = frame.displayHeight;
 
-            // === если сегментер ещё не создан — создаём прямо здесь ===
             if (!this.segmenter) {
                 console.log("⏳ Initializing segmenter...");
-                this.segmenter = new VideoSegmenter({ downsampleRatio: 0.4, frameSkip: 0 });
-                await this.segmenter.loadModel("/RobustVideoMatting/model/model.json");
-                await this.segmenter.setBackground("wallpaper.png");
+                this.segmenter = await initSegmenter();
                 console.log("✅ Segmenter ready");
             }
 
-            // === предикт ===
             const segBitmap = await this.segmenter.predict(frame);
-
             this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
             this.ctx.drawImage(segBitmap, 0, 0);
 
@@ -63,11 +50,33 @@ const videoProcessor = {
             segBitmap.close();
         } catch (err) {
             console.error("Segmentation error:", err);
-            controller.enqueue(frame); // fallback
+            controller.enqueue(frame);
         }
     },
 
+    // --- совместимость со старым API ---
+    async setBackground(type, data) {
+        if (!this.segmenter) {
+            console.warn("Segmenter not ready yet");
+            return;
+        }
 
+        // Если выбран один из стандартных фонов
+        if (type === "preset" && data) {
+            const path = `/backgrounds/${data}`;
+            console.log("🎨 Switching to preset background:", path);
+            await this.segmenter.setBackground(`${path}?t=${Date.now()}`);
+            return;
+        }
+
+        // Если передан собственный путь (например wallpaper.png)
+        if (typeof data === "string") {
+            await this.segmenter.setBackground(`${data}?t=${Date.now()}`);
+            return;
+        }
+
+        console.warn("setBackground: неизвестный формат", type, data);
+    },
 
     updateOverlayStates() {
         this.state.overlays.forEach(overlay => {
