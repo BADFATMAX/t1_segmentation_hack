@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>RVM Demo</title>
+  <style>
+    body { font-family: sans-serif; background:#111; color:#eee; margin:0; padding:16px; }
+    #row { display:flex; gap:16px; align-items:flex-start; }
+    canvas { border:1px solid #333; border-radius:8px; max-width:90vw; }
+    video { display:none; }
+    #status { margin-right:16px; }
+  </style>
+</head>
+<body>
+  <div id="row">
+    <div><span id="status">Загрузка...</span><span id="fps"></span></div>
+  </div>
+  <canvas id="canvas"></canvas>
+  <video id="webcam" autoplay playsinline></video>
+
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
+  <script src="segmentation.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>

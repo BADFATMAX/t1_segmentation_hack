@@ -1,0 +1,267 @@
+/* public/style.css */
+:root {
+    --header-height: 60px;
+    --primary-color: #08b9a6;
+    --dark-bg: #2c2c2c;
+    --light-bg: #f4f4f4;
+    --text-color: #333;
+    --light-text: #f0f0f0;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--light-bg);
+    margin: 0;
+    padding: 0;
+    color: var(--text-color);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+.main-header h1 {
+    display: flex; /* Используем flexbox для выравнивания */
+    align-items: center; /* Выравниваем элементы по центру по вертикали */
+    gap: 15px; /* Промежуток между логотипом и текстом */
+    font-size: 2.5em; /* Можно настроить размер заголовка */
+    color: #08B9A6; /* Цвет текста заголовка */
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3); /* Тень для объема */
+    margin: 0; /* Убираем стандартные отступы */
+}
+
+.header-logo {
+    height: 60px; /* Высота логотипа. Можно настроить */
+    width: auto; /* Автоматическая ширина для сохранения пропорций */
+    vertical-align: middle; /* Выравнивание по середине с текстом, если не используем flex */
+}
+.main-header {
+    background-color: #111;
+    color: var(--light-text);
+    height: var(--header-height);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    flex-shrink: 0;
+}
+
+.main-header h1 {
+    margin: 0;
+    font-size: 1.5em;
+    font-weight: 500;
+}
+
+.main-container {
+    display: flex;
+    flex-grow: 1;
+    overflow: hidden;
+}
+
+.video-container {
+    flex-grow: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #000;
+    position: relative;
+    padding: 20px;
+}
+
+#localVideo {
+    max-width: 100%;
+    max-height: 100%;
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+}
+
+/* СЛОЙ ДЛЯ ИНТЕРАКТИВНОСТИ */
+#interaction-canvas {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    z-index: 10;
+    cursor: grab;
+}
+
+.fps-counter {
+    position: absolute;
+    top: 30px;
+    right: 30px;
+    color: red;
+    font-size: 24px;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px black;
+    z-index: 20;
+}
+
+.controls-container {
+    width: 380px;
+    flex-shrink: 0;
+    background-color: #fff;
+    padding: 15px;
+    overflow-y: auto;
+    border-left: 1px solid #ddd;
+}
+
+fieldset {
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    padding: 15px;
+}
+
+legend {
+    font-weight: bold;
+    color: var(--primary-color);
+    padding: 0 10px;
+}
+
+input[type="text"],
+input[type="file"],
+input[type="number"],
+input[type="range"],
+button {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    box-sizing: border-box;
+}
+
+input[type="range"] {
+    padding: 0;
+}
+
+input[type="checkbox"] {
+    width: auto;
+}
+
+button {
+    background-color: var(--primary-color);
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    border: none;
+    transition: background-color 0.2s;
+}
+
+button:hover {
+    background-color: #07a895;
+}
+
+.controls-row {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 10px;
+    align-items: center;
+}
+
+.controls-row.button-group button {
+    flex: 1;
+}
+
+.controls-row label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+input[type="color"] {
+    width: 50px;
+    height: 30px;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    background: none;
+}
+.privacy-preview-box {
+    margin-top: 15px;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    font-size: 0.9em;
+    color: #495057;
+}
+
+.privacy-preview-box small {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #6c757d;
+}
+
+.privacy-preview-box p {
+    margin: 0;
+    line-height: 1.5;
+    white-space: pre-wrap; 
+}
+
+/* Стили для панели слоев */
+#layers-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.layer-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px;
+    background-color: #f9f9f9;
+    border: 1px solid #eee;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+.layer-item span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 250px;
+}
+
+.delete-layer-btn {
+    width: 30px; /* Фиксированная ширина */
+    height: 30px;
+    padding: 0;
+    margin: 0;
+    background-color: #e0e0e0;
+    color: #333;
+    font-weight: bold;
+    flex-shrink: 0;
+}
+
+.delete-layer-btn:hover {
+    background-color: #f44336; /* Красный при наведении */
+    color: white;
+}
+
+/* ИЗМЕНЕННЫЕ СТИЛИ для галереи готовых фонов */
+#preset-backgrounds-gallery {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-start;
+}
+
+
+#preset-backgrounds-gallery img {
+    width: calc(25% - 6px);
+    height: auto;
+    border-radius: 4px;
+    cursor: pointer;
+    border: 3px solid transparent;
+    transition: all 0.2s ease-in-out;
+    box-sizing: border-box;
+}
+
+#preset-backgrounds-gallery img:hover {
+    border-color: #ccc;
+}
+
+#preset-backgrounds-gallery img.selected {
+    border-color: var(--primary-color);
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(8, 185, 166, 0.6);
+}
