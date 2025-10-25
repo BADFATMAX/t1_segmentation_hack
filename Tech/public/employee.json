@@ -1,16 +1,16 @@
 {
   "employee": {
-    "full_name": "Иванов Сергей Петрович",
-    "position": "Ведущий инженер по компьютерному зрению",
-    "company": "ООО «Рога и Копыта»",
+    "full_name": "Марк",
+    "position": "Инженер по компьютерному зрению",
+    "company": "ЦИИ НГУ",
     "department": "Департамент компьютерного зрения",
-    "office_location": "Новосибирск, технопарк «Идея»",
+    "office_location": "Новосибирск",
     "contact": {
-      "email": "sergey.ivanov@t1dp.ru",
-      "telegram": "https://t.me/sergey_vision"
+      "email": "markuslons@gmail.com",
+      "telegram": "https://t.me/markus_lons"
     },
     "branding": {
-      "logo_url": "https://i0.wp.com/optimacros.com/wp-content/uploads/2024/11/t1.png?fit=540%2C358&ssl=1",
+      "logo_url": "https://static.tildacdn.com/tild3531-6239-4438-b231-303337316331/NSU_logo_green_rus.png",
       "corporate_colors": {
         "primary": "#FF1493",
         "secondary": "#00FFFF"
