@@ -11,12 +11,12 @@ class App {
         this.selectedPresetFilename = null; // Для хранения имени выбранного фона
         // Добавленные пресеты цветов
         this.COMPANY_PRESETS = {
-            "Сбер": { "primary_color": [0, 166, 81], "secondary_color": [0, 102, 51] },
-            "Тбанк": { "primary_color": [255, 215, 0], "secondary_color": [0, 0, 0] },
+            "ООО Крокодил": { "primary_color": [0, 166, 81], "secondary_color": [0, 102, 51] },
+            "ООО Орел": { "primary_color": [255, 215, 0], "secondary_color": [0, 0, 0] },
             "Т1": { "primary_color": [0, 90, 255], "secondary_color": [255, 255, 255] },
-            "Яндекс": { "primary_color": [255, 0, 0], "secondary_color": [255, 255, 255] },
-            "Роснефть": { "primary_color": [255, 204, 0], "secondary_color": [0, 0, 0] },
-            "Газпром": { "primary_color": [0, 92, 184], "secondary_color": [255, 255, 255] }
+            "ООО Красная панда": { "primary_color": [255, 0, 0], "secondary_color": [255, 255, 255] },
+            "ООО Пчела": { "primary_color": [255, 204, 0], "secondary_color": [0, 0, 0] },
+            "ООО Карась": { "primary_color": [0, 92, 184], "secondary_color": [255, 255, 255] }
         };
         this.init();
     }
